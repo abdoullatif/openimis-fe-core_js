@@ -1,6 +1,8 @@
-import React, { Fragment } from "react";
+import React, { Fragment, useEffect } from "react";
 import withStyles from "@material-ui/core/styles/withStyles";
 import { Typography, Divider } from "@material-ui/core";
+import { useDispatch } from "react-redux";
+import { logout } from "../../actions";
 
 const styles = (theme) => ({
   error: {
@@ -16,6 +18,25 @@ const styles = (theme) => ({
 
 function Error(props) {
   const { classes, error } = props;
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    // Détecter les erreurs CSRF et rediriger automatiquement
+    if (error && 
+        (error.detail?.includes("CSRF token missing or incorrect") ||
+         error.detail?.includes("CSRF token") ||
+         error.message?.includes("CSRF token"))) {
+      
+      // Nettoyer les tokens et rediriger vers login
+      localStorage.removeItem('csrfToken');
+      dispatch(logout());
+      
+      // Rediriger vers la page de login
+      const basename = process.env.PUBLIC_URL || '/front';
+      window.location.href = `${basename}/login`;
+    }
+  }, [error, dispatch]);
+
   return (
     <div className={classes.error}>
       <Typography variant="h6" className={classes.errorHeader}>

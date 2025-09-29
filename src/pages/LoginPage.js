@@ -12,24 +12,95 @@ import { baseApiUrl } from "../actions";
 import { DEFAULT, SAML_LOGIN_PATH } from "../constants";
 import ArrowBackIcon from "@material-ui/icons/ArrowBack";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((theme) => {
+  // Construire le chemin de l'image en tenant compte du basename
+  const basename = process.env.PUBLIC_URL || '/front';
+  const imagePath = `${basename}/login-background.jpeg`;
+  
+  return {
+    root: {
+      minHeight: "100vh",
+      backgroundImage: `url('${imagePath}')`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      "&::before": {
+        content: '""',
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+        zIndex: 1,
+      },
+    },
   container: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    margin: "auto",
+    position: "relative",
+    zIndex: 2,
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-  },
-  paper: theme.paper.paper,
-  logo: {
     width: "100%",
     padding: theme.spacing(2),
   },
-}));
+  loginCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    backdropFilter: "blur(10px)",
+    borderRadius: theme.spacing(2),
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+    maxWidth: 450,
+    width: "100%",
+    overflow: "hidden",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+  },
+  logo: {
+    width: "100%",
+    padding: theme.spacing(2),
+    maxWidth: 200,
+    margin: "0 auto",
+    display: "block",
+  },
+  formContainer: {
+    padding: theme.spacing(4),
+  },
+  title: {
+    textAlign: "center",
+    marginBottom: theme.spacing(3),
+    color: theme.palette.primary.main,
+    fontWeight: 600,
+  },
+  button: {
+    marginTop: theme.spacing(2),
+    height: 48,
+    borderRadius: theme.spacing(1),
+    textTransform: "none",
+    fontSize: "1.1rem",
+    fontWeight: 600,
+  },
+  forgotPassword: {
+    textAlign: "center",
+    marginTop: theme.spacing(2),
+    color: theme.palette.primary.main,
+    "&:hover": {
+      backgroundColor: "transparent",
+      textDecoration: "underline",
+    },
+  },
+  backButton: {
+    color: "white",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backdropFilter: "blur(10px)",
+    "&:hover": {
+      backgroundColor: "rgba(255, 255, 255, 0.3)",
+    },
+  },
+  };
+});
 
 const LOGIN_PAGE_CONTRIBUTION_KEY = "core.LoginPage";
 const LOGIN_PAGE_MPASS_CONTRIBUTION_KEY = "workerVoucher.MPassLoginButton";
@@ -107,38 +178,42 @@ const LoginPage = ({ logo }) => {
   };
 
   return (
-    <>
+    <div className={classes.root}>
+      <Helmet title={formatMessage("pageTitle")} />
+      
       {isAuthenticating && (
-        <Box position="absolute" top={0} left={0} right={0}>
+        <Box position="absolute" top={0} left={0} right={0} zIndex={3}>
           <LinearProgress className="bootstrap" />
         </Box>
       )}
+      
+      {enablePublicPage && (
+        <Box position="absolute" top={20} left={20} zIndex={3}>
+          <Button
+            onClick={() => history.push("/")}
+            startIcon={<ArrowBackIcon />}
+            className={classes.backButton}
+            variant="contained"
+          >
+            {formatMessage("backButton")}
+          </Button>
+        </Box>
+      )}
+      
       <div className={classes.container}>
-        <Helmet title={formatMessage("pageTitle")} />
-        <Paper className={classes.paper} elevation={2}>
-          <form onSubmit={onSubmit}>
-            <Box p={6} width={380}>
-              <Grid container spacing={2} direction="column" alignItems="stretch">
-                {enablePublicPage && (
-                  <Grid item container direction="row" alignItems="center">
-                    <Button
-                      onClick={() => history.push("/")}
-                      startIcon={<ArrowBackIcon />}
-                      color="primary"
-                      variant="text"
-                    >
-                      {formatMessage("backButton")}
-                    </Button>
-                  </Grid>
-                )}
-                <Grid item container direction="row" alignItems="center">
-                  <img className={classes.logo} src={logo} />
-                  {!isWorker && (
-                    <Box pl={2} fontWeight="fontWeightMedium" fontSize="h4.fontSize">
-                      {formatMessage("appName")}
-                    </Box>
-                  )}
-                </Grid>
+        <Paper className={classes.loginCard} elevation={0}>
+          <Box className={classes.formContainer}>
+            <Box textAlign="center" mb={3}>
+              <img className={classes.logo} src={logo} alt="Logo" />
+              {!isWorker && (
+                <Typography variant="h4" className={classes.title}>
+                  {formatMessage("appName")}
+                </Typography>
+              )}
+            </Box>
+            
+            <form onSubmit={onSubmit}>
+              <Grid container spacing={3} direction="column">
                 {showMPassProvider ? (
                   <Grid item>
                     <Box display="flex" alignItems="center" justifyContent="center" my={2}>
@@ -186,9 +261,11 @@ const LoginPage = ({ logo }) => {
                       />
                     </Grid>
                     {serverResponse?.message && (
-                    <Grid item>
-                      <Box color="error.main">{getErrorMessage(serverResponse.message)}</Box>
-                    </Grid>
+                      <Grid item>
+                        <Box color="error.main" textAlign="center">
+                          {getErrorMessage(serverResponse.message)}
+                        </Box>
+                      </Grid>
                     )}
                     <Grid item>
                       <Button
@@ -197,22 +274,29 @@ const LoginPage = ({ logo }) => {
                         disabled={isAuthenticating || !(credentials.username && credentials.password)}
                         color="primary"
                         variant="contained"
+                        className={classes.button}
                       >
                         {formatMessage("loginBtn")}
                       </Button>
                     </Grid>
                     <Grid item>
-                      <Button onClick={redirectToForgotPassword}>{formatMessage("forgotPassword")}</Button>
+                      <Button 
+                        onClick={redirectToForgotPassword}
+                        className={classes.forgotPassword}
+                        variant="text"
+                      >
+                        {formatMessage("forgotPassword")}
+                      </Button>
                       <Contributions contributionKey={LOGIN_PAGE_CONTRIBUTION_KEY} />
                     </Grid>
                   </>
-                  )}
+                )}
               </Grid>
-            </Box>
-          </form>
+            </form>
+          </Box>
         </Paper>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -88,7 +88,8 @@ const App = (props) => {
       lang = localesManager.getFileNameByLang(user.language);
     } else {
       const cookieLang = getCookie(PUBLIC_PAGE_LANGUAGE_STORAGE_KEY);
-      lang = cookieLang ? cookieLang : localesManager.getFileNameByLang(navigator.language) ?? "en";
+      // Forcer le français par défaut si aucune langue n'est définie
+      lang = cookieLang ? cookieLang : "fr";
     }
     var msgs = modulesManager
       .getContribs(TRANSLATION_CONTRIBUTION_KEY)

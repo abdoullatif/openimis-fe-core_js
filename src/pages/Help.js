@@ -7,6 +7,7 @@ import { HelpOutline } from "@material-ui/icons";
 import { useModulesManager } from "@openimis/fe-core";
 import { CORE_MIS_CONFLUENCE_URL, DEFAULT_URL, MODULE_NAME } from "../constants";
 import { useTranslations } from "../helpers/i18n";
+import { useHistory } from "../helpers/history";
 
 const styles = (theme) => ({
   button: {
@@ -17,11 +18,20 @@ const styles = (theme) => ({
 
 const Help = ({ classes }) => {
   const modulesManager = useModulesManager();
+  const history = useHistory();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
-  const isCoreMISHelp = modulesManager.getConf("fe-core", "redirectToCoreMISConfluenceUrl", false);
-  const url = isCoreMISHelp ? CORE_MIS_CONFLUENCE_URL : DEFAULT_URL;
+  const useInternalHelp = modulesManager.getConf("fe-core", "useInternalHelp", true);
+  
   const onClick = () => {
-    window.open(url);
+    if (useInternalHelp) {
+      // Rediriger vers la page d'aide interne
+      history.push("/help");
+    } else {
+      // Ouvrir l'URL externe (comportement par défaut)
+      const isCoreMISHelp = modulesManager.getConf("fe-core", "redirectToCoreMISConfluenceUrl", false);
+      const url = isCoreMISHelp ? CORE_MIS_CONFLUENCE_URL : DEFAULT_URL;
+      window.open(url);
+    }
   };
 
   return (

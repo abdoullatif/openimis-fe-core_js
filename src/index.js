@@ -1,6 +1,7 @@
 import App from "./components/App";
 import React from "react";
 import messages_en from "./translations/en.json";
+import messages_fr from "./translations/fr.json";
 import KeepLegacyAlive from "./components/KeepLegacyAlive";
 import AutoSuggestion from "./components/inputs/AutoSuggestion";
 import Autocomplete from "./components/inputs/Autocomplete";
@@ -135,12 +136,17 @@ import UserActivityReport from "./reports/UserActivityReport";
 import RegistersStatusReport from "./reports/RegistersStatusReport";
 import SearcherActionButton from "./components/generics/SearcherActionButton";
 import InfoButton from "./components/generics/InfoButton";
+import HelpPage from "./pages/HelpPage";
 
 const ROUTE_ROLES = "roles";
 const ROUTE_ROLE = "roles/role";
+const ROUTE_HELP = "help";
 
 const DEFAULT_CONFIG = {
-  "translations": [{ key: "en", messages: messages_en }],
+  "translations": [
+    { key: "en", messages: messages_en },
+    { key: "fr", messages: messages_fr }
+  ],
   "reducers": [{ key: "core", reducer: reducer }],
   "reports": [
     {
@@ -193,6 +199,7 @@ const DEFAULT_CONFIG = {
   "core.Router": [
     { path: ROUTE_ROLES, component: Roles },
     { path: ROUTE_ROLE + "/:role_uuid?", component: Role },
+    { path: ROUTE_HELP, component: HelpPage },
   ],
   "admin.MainMenu": [
     {

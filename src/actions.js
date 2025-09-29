@@ -270,6 +270,9 @@ export function login(credentials) {
           }`;
 
       try {
+        // Get csrfToken from localStorage first
+        const csrfToken = localStorage.getItem('csrfToken');
+        
         const response = await dispatch(
           graphqlMutation(mutation, credentials, ["CORE_AUTH_LOGIN_REQ", "CORE_AUTH_LOGIN_RESP", "CORE_AUTH_ERR"], {}, false, {
             "X-CSRFToken": csrfToken
@@ -283,9 +286,9 @@ export function login(credentials) {
         
         const jwtToken = response.payload.data.tokenAuth.token;
         const csrfResponse = await dispatch(fetchCsrfToken(jwtToken));
-        const csrfToken = csrfResponse?.payload?.data?.getCsrfToken?.csrfToken;
-        if (csrfToken) {
-          localStorage.setItem('csrfToken', csrfToken);
+        const newCsrfToken = csrfResponse?.payload?.data?.getCsrfToken?.csrfToken;
+        if (newCsrfToken) {
+          localStorage.setItem('csrfToken', newCsrfToken);
         }
 
 
@@ -320,7 +323,7 @@ export function fetchCsrfToken(jwtToken) {
 }
 
 export function refreshAuthToken() {
-  return (dispatch) => {
+  return async (dispatch) => {
     const mutation = `
     mutation refreshAuthToken {
       refreshToken {
@@ -328,13 +331,42 @@ export function refreshAuthToken() {
       }
     }
   `;
-    return dispatch(graphqlMutation(mutation, {}, "CORE_AUTH_REFRESH_TOKEN"));
+    try {
+      const response = await dispatch(graphqlMutation(mutation, {}, "CORE_AUTH_REFRESH_TOKEN"));
+      
+      // If refresh fails, clear tokens and redirect to login
+      if (response.payload?.errors?.length > 0) {
+        localStorage.removeItem('csrfToken');
+        dispatch(logout());
+        const basename = process.env.PUBLIC_URL || '/front';
+        window.location.href = `${basename}/login`;
+        return response;
+      }
+      
+      return response;
+    } catch (error) {
+      // If refresh fails, clear tokens and redirect to login
+      localStorage.removeItem('csrfToken');
+      dispatch(logout());
+      const basename = process.env.PUBLIC_URL || '/front';
+      window.location.href = `${basename}/login`;
+      throw error;
+    }
   };
 }
 
 export function initialize() {
   return async (dispatch) => {
-    await dispatch(login());
+    // Vérifier s'il y a un token CSRF valide avant d'essayer de se reconnecter
+    const csrfToken = localStorage.getItem('csrfToken');
+    if (csrfToken) {
+      try {
+        await dispatch(login());
+      } catch (error) {
+        // Si la reconnexion échoue, nettoyer les tokens
+        localStorage.removeItem('csrfToken');
+      }
+    }
     return dispatch({ type: "CORE_INITIALIZED" });
   };
 }

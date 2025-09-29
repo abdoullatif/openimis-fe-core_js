@@ -10,7 +10,11 @@ export const PublicPageLanguageProvider = ({ children }) => {
   const modulesManager = useModulesManager();
   const enablePublicPage = modulesManager.getConf("fe-core", "App.enablePublicPage", DEFAULT.ENABLE_PUBLIC_PAGE);
 
-  const [publicPageLang, setPublicPageLang] = useState(() => getCookie(PUBLIC_PAGE_LANGUAGE_COOKIE_KEY) ?? "en");
+  const [publicPageLang, setPublicPageLang] = useState(() => {
+    const cookieLang = getCookie(PUBLIC_PAGE_LANGUAGE_COOKIE_KEY);
+    // Forcer le français par défaut
+    return cookieLang === "en" ? "fr" : (cookieLang || "fr");
+  });
 
   useEffect(() => {
     if (publicPageLang) {

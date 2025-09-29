@@ -73,6 +73,51 @@ const useStyles = makeStyles((theme) => ({
       color: theme.palette.text.primary,
     },
   },
+  toolbarDrawerLanguage: {
+    color: "white !important",
+    "& .MuiSelect-root": {
+      color: "white !important",
+    },
+    "& .MuiInput-underline:before": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiInput-underline:after": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiSelect-icon": {
+      color: "white !important",
+    },
+    "& .MuiFormLabel-root": {
+      color: "white !important",
+    },
+    "& .MuiFormLabel-root.Mui-focused": {
+      color: "white !important",
+    },
+  },
+  toolbarDrawerSearch: {
+    color: "white !important",
+    "& .MuiInputBase-input": {
+      color: "white !important",
+    },
+    "& .MuiInput-underline:before": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiInput-underline:after": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
+      borderBottomColor: "white !important",
+    },
+    "& .MuiFormLabel-root": {
+      color: "white !important",
+    },
+    "& .MuiFormLabel-root.Mui-focused": {
+      color: "white !important",
+    },
+  },
   
   appBarShift: {
     width: `calc(100% - ${theme.menu.drawer.width})`,
@@ -227,32 +272,35 @@ const RequireAuth = (props) => {
   );
   const isWorker = modulesManager.getConf("fe-core", "isWorker", DEFAULT.IS_WORKER);
   const showJournalSidebar = modulesManager.getConf("fe-core", "showJournalSidebar", DEFAULT.SHOW_JOURNAL_SIDEBAR);
-
   const isAppBarMenu = useMemo(() => theme.menu.variant.toUpperCase() === "APPBAR", [theme.menu.variant]);
 
   if (!auth.isAuthenticated) {
     return <Redirect to={redirectTo} />;
   }
   if (cfg['openimis-fe-core_js']?.menuLeft === true) {
+    const { formatMessage } = useTranslations("core", modulesManager);
     return (
-    <>
-      <AppBar position="fixed" className={classes.appBarDrawer}>
-        <Toolbar className={classes.toolbarDrawer}>
-          <Contributions {...others} contributionKey={APP_BAR_CONTRIBUTION_KEY}>
-            <div className={classes.grow} />
-          </Contributions>
-          <LogoutButton className={classes.toolbarDrawerLogout}/>
-          <Help />
-        </Toolbar>
-      </AppBar>
-      <Drawer
-        className={classes.drawer}
-        variant="permanent"
-        classes={{
-          paper: classes.drawerPaper,
-        }}
-        anchor="left"
-      >
+      <>
+        <AppBar position="fixed" className={classes.appBarDrawer}>
+          <Toolbar className={classes.toolbarDrawer}>
+            <Contributions {...others} contributionKey={APP_BAR_CONTRIBUTION_KEY}>
+              <div className={classes.grow} />
+            </Contributions>
+            <div className={classes.toolbarDrawerLanguage}>
+              <LanguageQuickPicker />
+            </div>
+            <LogoutButton className={classes.toolbarDrawerLogout}/>
+            <Help />
+          </Toolbar>
+        </AppBar>
+        <Drawer
+          className={classes.drawer}
+          variant="permanent"
+          classes={{
+            paper: classes.drawerPaper,
+          }}
+          anchor="left"
+        >
           <Button className={classes.appName} onClick={(e) => (window.location.href = "/front")}>
             {isAppBarMenu && (
               <Hidden smDown implementation="css">
@@ -261,27 +309,25 @@ const RequireAuth = (props) => {
             )}
             <FormattedMessage module="core" id="appName" defaultMessage={<FormattedMessage id="root.appName" />} />
             <Hidden smDown implementation="css">
-            <Tooltip title={modulesManager.getModulesVersions().join(", ")}>
-              <Typography variant="caption" className={classes.appVersions}>
-                {modulesManager.getOpenIMISVersion()}
-              </Typography>
-            </Tooltip>
-          </Hidden>
+              <Tooltip title={modulesManager.getModulesVersions().join(", ")}>
+                <Typography variant="caption" className={classes.appVersions}>
+                  {modulesManager.getOpenIMISVersion()}
+                </Typography>
+              </Tooltip>
+            </Hidden>
           </Button>
-            <div className={classes.drawerContainer}></div>
-              <MainMenuBar {...others} menuVariant="Drawer" contributionKey={MAIN_MENU_CONTRIBUTION_KEY}>
-                <Divider />
-              </MainMenuBar>
-            <div/>
-            </Drawer>  
-          <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />
-      <main
-        className={classes.contentShiftLeftSideMenu}
-      >
-        {children}
-      </main>
-    </>
-    )
+          <div className={classes.drawerContainer}></div>
+            <MainMenuBar {...others} menuVariant="Drawer" contributionKey={MAIN_MENU_CONTRIBUTION_KEY}>
+              <Divider />
+            </MainMenuBar>
+          <div/>
+        </Drawer>  
+        <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />
+        <main className={classes.contentShiftLeftSideMenu}>
+          {children}
+        </main>
+      </>
+    );
   }
   const { formatMessage } = useTranslations(module, modulesManager);
   return (
