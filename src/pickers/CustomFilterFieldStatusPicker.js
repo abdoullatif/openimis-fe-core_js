@@ -18,7 +18,7 @@ const CustomFilterFieldStatusPicker = ({
 
   const options = Array.isArray(customFilters) && customFilters !== undefined ?  [
     ...customFilters.map((customFilter) => ({
-        value: { field: customFilter.field, type: customFilter.type },
+        value: { field: customFilter.field, type: customFilter.type, referential: customFilter.referential, typeLocation: customFilter.typeLocation },
         label: customFilter.field
     }))
   ] : [];

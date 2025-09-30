@@ -29,7 +29,7 @@ const LANGUAGE_FULL_PROJECTION = () => ["name", "code"];
 
 const MODULEPERMISSION_FULL_PROJECTION = () => ["modulePermsList{moduleName, permissions{permsName, permsValue}}"];
 
-const CUSTOM_FILTER_FULL_PROJECTION = () => ["type", "code", "possibleFilters {field, filter, type}"];
+const CUSTOM_FILTER_FULL_PROJECTION = () => ["type", "code", "possibleFilters {field, filter, type, referential, typeLocation}"];
 
 export function fetchCustomFilter(params) {
   const payload = formatQuery("customFilters", params, CUSTOM_FILTER_FULL_PROJECTION());
@@ -52,7 +52,7 @@ function getCsrfToken() {
 
   const cookies = document.cookie;
   const cookieArray = cookies.split('; ');
-  
+
   const csrfCookie = cookieArray.find(cookie => cookie.startsWith(CSRF_TOKEN_NAME));
   return csrfCookie?.split('=')[1] ?? CSRF_NOT_FOUND;
 }
@@ -272,7 +272,7 @@ export function login(credentials) {
       try {
         // Get csrfToken from localStorage first
         const csrfToken = localStorage.getItem('csrfToken');
-        
+
         const response = await dispatch(
           graphqlMutation(mutation, credentials, ["CORE_AUTH_LOGIN_REQ", "CORE_AUTH_LOGIN_RESP", "CORE_AUTH_ERR"], {}, false, {
             "X-CSRFToken": csrfToken
@@ -283,7 +283,7 @@ export function login(credentials) {
           dispatch(authError({ message: errorMessage }));
           return { loginStatus: "CORE_AUTH_ERR", message: errorMessage };
         }
-        
+
         const jwtToken = response.payload.data.tokenAuth.token;
         const csrfResponse = await dispatch(fetchCsrfToken(jwtToken));
         const newCsrfToken = csrfResponse?.payload?.data?.getCsrfToken?.csrfToken;
@@ -333,7 +333,7 @@ export function refreshAuthToken() {
   `;
     try {
       const response = await dispatch(graphqlMutation(mutation, {}, "CORE_AUTH_REFRESH_TOKEN"));
-      
+
       // If refresh fails, clear tokens and redirect to login
       if (response.payload?.errors?.length > 0) {
         localStorage.removeItem('csrfToken');
@@ -342,7 +342,7 @@ export function refreshAuthToken() {
         window.location.href = `${basename}/login`;
         return response;
       }
-      
+
       return response;
     } catch (error) {
       // If refresh fails, clear tokens and redirect to login
