@@ -1,28 +1,42 @@
-import React, { useEffect, useState } from "react";
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable react/jsx-no-useless-fragment */
+/* eslint-disable jsx-a11y/no-static-element-interactions */
+/* eslint-disable jsx-a11y/click-events-have-key-events */
+import React from "react";
 import { injectIntl } from "react-intl";
 import {
   PublishedComponent,
   TextInput,
   NumberInput,
   SelectInput,
+  useModulesManager,
+  useTranslations,
 } from "@openimis/fe-core";
 import { Grid } from "@material-ui/core";
 import { withTheme, withStyles } from "@material-ui/core/styles";
 import { connect } from "react-redux";
 import CustomFilterFieldStatusPicker from "../../pickers/CustomFilterFieldStatusPicker";
 import CustomFilterTypeStatusPicker from "../../pickers/CustomFilterTypeStatusPicker";
-import { 
-  BOOL_OPTIONS, 
+import {
+  BOOL_OPTIONS,
   CLEARED_STATE_FILTER,
   INTEGER,
   DATE,
   STRING,
-  BOOLEAN
+  BOOLEAN,
 } from "../../constants";
 
 const styles = (theme) => ({
   item: theme.paper.item,
 });
+
+// Mapping automatique entre typeLocation et niveau LocationPicker
+const LOCATION_LEVELS = {
+  Region: 0,
+  District: 1,
+  Municipality: 2,
+  Village: 3,
+};
 
 const AdvancedFilterRowValue = ({
   intl,
@@ -34,25 +48,24 @@ const AdvancedFilterRowValue = ({
   filters,
   setFilters,
 }) => {
-
   const onAttributeChange = (attribute) => (value) => {
     let updatedFilter = { ...currentFilter };
-  
-    if (attribute === 'field') {
+
+    if (attribute === "field") {
       updatedFilter = {
-        ...{ filter: '', value: '', type: value.type },
+        ...{ filter: "", value: "", type: value.type, referential: value.referential, typeLocation: value.typeLocation },
       };
     }
-  
-    const attributeValue = attribute === 'field' ? value.field : value;
+
+    const attributeValue = attribute === "field" ? value.field : value;
     updatedFilter = {
       ...updatedFilter,
       [attribute]: attributeValue,
-      ...(attribute === 'filter' && { value: '' }),
+      ...(attribute === "filter" && { value: "" }),
     };
-  
+
     setCurrentFilter(updatedFilter);
-  
+
     setFilters((prevFilters) => {
       const updatedRows = [...prevFilters];
       updatedRows[index] = { ...updatedFilter };
@@ -67,98 +80,118 @@ const AdvancedFilterRowValue = ({
   };
 
   const renderInputBasedOnType = (type) => {
+    const modulesManager = useModulesManager();
+    const { formatMessage } = useTranslations("core", modulesManager);
     const commonProps = {
       module: "core",
-      label: "core.advancedFilters.value",
+      label: formatMessage("core.advancedFilters.value"),
       value: currentFilter.value,
       onChange: onAttributeChange("value"),
     };
-  
+
+    // Cas spécial : Localités (Region, District, Municipality, Village)
+    if (currentFilter.referential === "Location" && currentFilter.typeLocation) {
+      const level = LOCATION_LEVELS[currentFilter.typeLocation];
+      return (
+        <PublishedComponent
+          pubRef="location.LocationPicker"
+          {...commonProps}
+          locationLevel={level}
+          parentLocation={
+            level === 1 ? currentFilter.region :
+            level === 2 ? currentFilter.district :
+            level === 3 ? currentFilter.municipality :
+            null
+          }
+        />
+      );
+    }
+
+    // Cas standard
     switch (type) {
       case BOOLEAN:
-        return (
-          <SelectInput
-            options={BOOL_OPTIONS}
-            {...commonProps}
-          />
-        );
+        return <SelectInput options={BOOL_OPTIONS} {...commonProps} />;
       case INTEGER:
-        return (
-          <NumberInput
-            min={0}
-            displayZero
-            {...commonProps}
-          />
-        );
+        return <NumberInput min={0} displayZero {...commonProps} />;
       case STRING:
       default:
         if (currentFilter.field.toLowerCase().includes(DATE)) {
-          return (
-            <PublishedComponent
-              pubRef="core.DatePicker"
-              {...commonProps}
-            />
-          );
-        } else {
-          return (
-            <TextInput
-              {...commonProps}
-            />
-          );
+          return <PublishedComponent pubRef="core.DatePicker" {...commonProps} />;
         }
+        return <TextInput {...commonProps} />;
     }
   };
 
   return (
-    <Grid 
-      container 
-      direction="row" 
+    <Grid
+      container
+      direction="row"
       className={classes.item}
       style={{ backgroundColor: "#DFEDEF" }}
     >
       {filters.length > 0 ? (
-        <div style={{ backgroundColor: '#DFEDEF', width: '25px', height: '25px', marginTop: '25px' }}>
+        <div
+          style={{
+            backgroundColor: "#DFEDEF",
+            width: "25px",
+            height: "25px",
+            marginTop: "25px",
+          }}
+        >
           <span
             style={{
-              transform: 'translate(-50%, -50%)',
-              fontSize: '16px',
-              color: '#006273',
+              transform: "translate(-50%, -50%)",
+              fontSize: "16px",
+              color: "#006273",
+              cursor: "pointer",
             }}
             onClick={removeFilter}
           >
             &#x2716;
           </span>
-        </div> 
-      ) : (<></>)
-      }
+        </div>
+      ) : (
+        <></>
+      )}
       <Grid item xs={3} className={classes.item}>
         <CustomFilterFieldStatusPicker
           module="core"
           label="core.advancedFilters.field"
-          value={{ field: currentFilter.field, type: currentFilter.type }}
+          value={{
+            field: currentFilter.field,
+            type: currentFilter.type,
+            referential: currentFilter.referential,
+            typeLocation: currentFilter.typeLocation,
+          }}
           onChange={onAttributeChange("field")}
           customFilters={customFilters}
         />
       </Grid>
-        {currentFilter.field !== "" ? (
-          <Grid item xs={3} className={classes.item}>
-            <CustomFilterTypeStatusPicker
-              module="core"
-              label="core.advancedFilters.filter"
-              value={currentFilter.filter}
-              onChange={onAttributeChange("filter")}
-              customFilters={customFilters}
-              customFilterField={currentFilter.field}
-            />
-          </Grid>
-        ) : (<></>) }
-        {currentFilter.field !== "" && currentFilter.filter !== "" ? (
-          <Grid item xs={3} className={classes.item}>
-            {renderInputBasedOnType(currentFilter.type)}
-          </Grid>
-        ) : (<></>) }
+      {currentFilter.field !== "" ? (
+        <Grid item xs={3} className={classes.item}>
+          <CustomFilterTypeStatusPicker
+            module="core"
+            label="core.advancedFilters.filter"
+            value={currentFilter.filter}
+            onChange={onAttributeChange("filter")}
+            customFilters={customFilters}
+            customFilterField={currentFilter.field}
+          />
+        </Grid>
+      ) : (
+        <></>
+      )}
+      {currentFilter.field !== "" && currentFilter.filter !== "" ? (
+        <Grid item xs={3} className={classes.item}>
+          {renderInputBasedOnType(currentFilter.type)}
+        </Grid>
+      ) : (
+        <></>
+      )}
     </Grid>
   );
 };
 
-export default injectIntl(withTheme(withStyles(styles)(connect(null, null)(AdvancedFilterRowValue))));
+export default injectIntl(
+  withTheme(withStyles(styles)(connect(null, null)(AdvancedFilterRowValue)))
+);
