@@ -19,24 +19,17 @@ const styles = (theme) => ({
 function Error(props) {
   const { classes, error } = props;
   const dispatch = useDispatch();
-
+  
+  // Intercepter les erreurs CSRF et déclencher un logout
   useEffect(() => {
-    // Détecter les erreurs CSRF et rediriger automatiquement
     if (error && 
-        (error.detail?.includes("CSRF token missing or incorrect") ||
-         error.detail?.includes("CSRF token") ||
-         error.message?.includes("CSRF token"))) {
-      
-      // Nettoyer les tokens et rediriger vers login
-      localStorage.removeItem('csrfToken');
+        error.message === "Server returned data error status" && 
+        error.detail?.includes("CSRF token missing or incorrect")) {
+      // Logout immédiat en cas d'erreur CSRF
       dispatch(logout());
-      
-      // Rediriger vers la page de login
-      const basename = process.env.PUBLIC_URL || '/front';
-      window.location.href = `${basename}/login`;
     }
   }, [error, dispatch]);
-
+  
   return (
     <div className={classes.error}>
       <Typography variant="h6" className={classes.errorHeader}>

@@ -8,26 +8,9 @@ export function authMiddleware(store) {
         return store.dispatch(authError(action.payload));
       }
       
-      // Gérer les erreurs CSRF (token manquant ou incorrect)
-      if (action.type !== "CORE_AUTH_ERR" && 
-          action.payload?.name === "ApiError" && 
-          (action.payload.status === 403 || 
-           action.payload.message?.includes("CSRF token missing or incorrect") ||
-           action.payload.message?.includes("CSRF token") ||
-           action.payload.detail?.includes("CSRF token"))) {
-        
-        // Nettoyer les tokens et rediriger vers login
-        localStorage.removeItem('csrfToken');
-        store.dispatch(logout());
-        
-        // Rediriger vers la page de login
-        const basename = process.env.PUBLIC_URL || '/front';
-        window.location.href = `${basename}/login`;
-        
-        return store.dispatch(authError({ 
-          message: "Session expirée. Veuillez vous reconnecter.",
-          status: 403 
-        }));
+      // Gérer les erreurs 403 (forbidden) 
+      if (action.type !== "CORE_AUTH_ERR" && action.payload?.name === "ApiError" && action.payload.status === 403) {
+        return store.dispatch(authError(action.payload));
       }
       
       return next(action);
