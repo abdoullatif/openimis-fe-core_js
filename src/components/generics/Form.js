@@ -1,7 +1,19 @@
 import React, { Component, Fragment } from "react";
 import { withTheme, withStyles } from "@material-ui/core/styles";
 import { injectIntl } from "react-intl";
-import { Fab, Grid, Paper, IconButton, Typography, Divider, Tooltip } from "@material-ui/core";
+import {
+  Fab,
+  Grid,
+  Paper,
+  IconButton,
+  Typography,
+  Divider,
+  CircularProgress,
+  Backdrop,
+  Fade,
+  Snackbar,
+} from "@material-ui/core";
+import MuiAlert from "@material-ui/lab/Alert";
 import AddIcon from "@material-ui/icons/Add";
 import SaveIcon from "@material-ui/icons/Save";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
@@ -9,7 +21,6 @@ import FormattedMessage from "./FormattedMessage";
 import Contributions from "./Contributions";
 import withHistory from "../../helpers/history";
 import { withTooltip, formatMessage } from "../../helpers/i18n";
-import _ from "lodash";
 
 const styles = (theme) => ({
   paper: theme.paper.paper,
@@ -17,36 +28,69 @@ const styles = (theme) => ({
   paperHeaderAction: theme.paper.action,
   tooltipContainer: theme.tooltipContainer,
   flexTooltip: theme.flexTooltip,
+  backdrop: {
+    zIndex: theme.zIndex.drawer + 2,
+    color: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
 });
+
+// Alert Material-UI helper
+function Alert(props) {
+  return <MuiAlert elevation={6} variant="filled" {...props} />;
+}
 
 class Form extends Component {
   state = {
     dirty: false,
     saving: false,
+    snackbarOpen: false,
+    snackbarMessage: "",
+    snackbarSeverity: "success",
   };
 
   componentDidMount() {
     if (!!this.props.forcedDirty) {
-      this.setState((state, props) => ({ dirty: true }));
+      this.setState({ dirty: true });
     }
   }
 
-  componentDidUpdate(prevProps, prevState, snapshot) {
+  componentDidUpdate(prevProps) {
     if (prevProps.reset !== this.props.reset || prevProps.edited_id !== this.props.edited_id) {
       this.setState({ dirty: false, saving: false });
     } else if (!this.state.dirty && !!this.props.forcedDirty) {
       this.setState({ dirty: true });
     } else if (prevProps.update !== this.props.update) {
-      this.setState({ saving: false });
+      // Si une mise à jour est détectée, stopper le loader et afficher succès
+      this.setState({
+        saving: false,
+        snackbarOpen: true,
+        snackbarMessage: "Enregistrement réussi !",
+        snackbarSeverity: "success",
+      });
+    } else if (prevProps.error !== this.props.error && this.props.error) {
+      // Gestion d'une erreur
+      this.setState({
+        saving: false,
+        snackbarOpen: true,
+        snackbarMessage: "Erreur lors de l’enregistrement.",
+        snackbarSeverity: "error",
+      });
     }
   }
 
   onEditedChanged = (data) => {
-    this.setState({ dirty: true }, (e) => this.props.onEditedChanged(data));
+    this.setState({ dirty: true }, () => this.props.onEditedChanged(data));
   };
 
   save = (data) => {
     this.setState({ saving: true }, this.props.save(data));
+  };
+
+  handleSnackbarClose = () => {
+    this.setState({ snackbarOpen: false });
   };
 
   render() {
@@ -91,13 +135,19 @@ class Form extends Component {
         condition: (!!this.state.dirty || !!openDirty) && !!save,
         content: (
           <span>
-            <Fab
-              color="primary"
-              disabled={!!this.state.saving || (!!canSave && !canSave())}
-              onClick={(e) => this.save(this.props.edited)}
-            >
-              <SaveIcon />
-            </Fab>
+            <div style={{ position: "relative" }}>
+              <Fab
+                color="primary"
+                disabled={!!this.state.saving || (!!canSave && !canSave())}
+                onClick={(e) => this.save(this.props.edited)}
+              >
+                {this.state.saving ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  <SaveIcon />
+                )}
+              </Fab>
+            </div>
           </span>
         ),
         tooltip: saveTooltip || formatMessage(this.props.intl, module, "saveTooltip"),
@@ -113,11 +163,10 @@ class Form extends Component {
         ),
         tooltip: fabTooltip,
       },
-    ]
+    ];
 
     const allTooltips = [...(additionalTooltips || []), ...defaultTooltips];
-
-    const filteredTooltips = allTooltips.filter(tooltip => tooltip.condition);
+    const filteredTooltips = allTooltips.filter((tooltip) => tooltip.condition);
 
     return (
       <Fragment>
@@ -125,6 +174,7 @@ class Form extends Component {
           <Grid container>
             <Grid item xs={12}>
               <Paper className={classes.paper}>
+                {/* === HEADER === */}
                 <Grid container alignItems="center" direction="row" className={classes.paperHeader}>
                   <Grid item xs={8}>
                     <Grid container alignItems="center">
@@ -160,7 +210,7 @@ class Form extends Component {
                                     {a.icon}
                                   </IconButton>
                                 ),
-                                a.tooltip,
+                                a.tooltip
                               )}
                             </Grid>
                           );
@@ -169,9 +219,12 @@ class Form extends Component {
                     </Grid>
                   )}
                 </Grid>
+
                 <Grid item xs={12}>
                   <Divider />
                 </Grid>
+
+                {/* === HEAD PANEL === */}
                 {(HeadPanel || headPanelContributionsKey) && (
                   <Grid item xs={12}>
                     {!!HeadPanel && (
@@ -190,6 +243,8 @@ class Form extends Component {
               </Paper>
             </Grid>
           </Grid>
+
+          {/* === PANELS === */}
           {!!Panels &&
             Panels.map((P, idx) => (
               <Grid key={`form_panel_${idx}`} item xs={12}>
@@ -204,6 +259,8 @@ class Form extends Component {
                 />
               </Grid>
             ))}
+
+          {/* === CONTRIBUTIONS PANELS === */}
           {!!contributedPanelsKey && (
             <Contributions
               {...this.props}
@@ -212,6 +269,8 @@ class Form extends Component {
             />
           )}
         </form>
+
+        {/* === FLOATING ACTION BUTTONS === */}
         {!enableActionButtons && (
           <div className={classes.tooltipContainer}>
             {filteredTooltips.map((item, index) => (
@@ -221,6 +280,26 @@ class Form extends Component {
             ))}
           </div>
         )}
+
+        {/* === BACKDROP LOADING OVERLAY === */}
+        <Fade in={this.state.saving} timeout={{ enter: 300, exit: 300 }}>
+          <Backdrop className={classes.backdrop} open={this.state.saving}>
+            <CircularProgress color="inherit" />
+            <Typography variant="subtitle1">Enregistrement en cours...</Typography>
+          </Backdrop>
+        </Fade>
+
+        {/* === SNACKBAR NOTIFICATIONS === */}
+        <Snackbar
+          open={this.state.snackbarOpen}
+          autoHideDuration={4000}
+          onClose={this.handleSnackbarClose}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert onClose={this.handleSnackbarClose} severity={this.state.snackbarSeverity}>
+            {this.state.snackbarMessage}
+          </Alert>
+        </Snackbar>
       </Fragment>
     );
   }
