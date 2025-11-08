@@ -1,6 +1,7 @@
 import React, { Component, Fragment } from "react";
 import * as Icons from "@material-ui/icons";
 import PropTypes from "prop-types";
+import clsx from "clsx";
 import MuiAccordion from "@material-ui/core/Accordion";
 import MuiAccordionDetails from "@material-ui/core/AccordionDetails";
 import MuiAccordionSummary from "@material-ui/core/AccordionSummary";
@@ -21,6 +22,7 @@ import {
   Grow,
   Paper,
   ClickAwayListener,
+  Tooltip,
 } from "@material-ui/core";
 import withModulesManager from "../../helpers/modules";
 import { _historyPush } from "../../helpers/history";
@@ -37,6 +39,18 @@ const styles = (theme) => ({
   },
   drawerDivider: {
     // width: 100
+  },
+  collapsedAccordion: {
+    '& .MuiAccordionSummary-root': {
+      minHeight: 48,
+      padding: '0 8px',
+    },
+    '& .MuiAccordionSummary-content': {
+      margin: 0,
+    },
+    '& .MuiAccordionDetails-root': {
+      padding: 0,
+    },
   },
   menuHeading: {
     fontSize: theme.menu.appBar.fontSize,
@@ -240,11 +254,65 @@ class MainMenuContribution extends Component {
   };
 
   drawerMenu = (entries) => {
+    const { isDrawerCollapsed } = this.props;
+    
+    if (isDrawerCollapsed) {
+      // En mode réduit, afficher seulement l'icône du groupe principal avec expansion
+      // Si pas d'icône, ne pas afficher le menu en mode réduit
+      if (!this.props.icon) {
+        return null;
+      }
+      return (
+        <Accordion className={clsx(this.props.classes.panel, this.props.classes.collapsedAccordion)} expanded={this.state.expanded} onChange={this.toggleExpanded}>
+          <AccordionSummary 
+            expandIcon={<ExpandMoreIcon />} 
+            id={`${this.props.header}-header`}
+            style={{ minHeight: 48, padding: '0 8px', justifyContent: 'center' }}
+          >
+            <Tooltip title={this.props.header} placement="right">
+              <IconButton style={{ padding: 8, color: 'inherit' }}>
+                {this.props.icon}
+              </IconButton>
+            </Tooltip>
+          </AccordionSummary>
+          <AccordionDetails style={{ padding: 0 }}>
+            <List component="nav">
+              {entries.map((entry, idx) => (
+                <Fragment key={`${this.props.header}_${idx}`}>
+                  <ListItem
+                    button
+                    key={`${this.props.header}_${idx}_item`}
+                    onClick={(e) => {
+                      this.redirect(entry.route);
+                    }}
+                    style={{ justifyContent: 'center', padding: '8px' }}
+                  >
+                    {entry.icon && (
+                      <ListItemIcon style={{ minWidth: 'auto' }}>
+                        <Tooltip title={entry.text} placement="right">
+                          {entry.icon}
+                        </Tooltip>
+                      </ListItemIcon>
+                    )}
+                  </ListItem>
+                  {entry.withDivider && (
+                    <Divider key={`${this.props.header}_${idx}_divider`} className={this.props.classes.drawerDivider} />
+                  )}
+                </Fragment>
+              ))}
+            </List>
+          </AccordionDetails>
+        </Accordion>
+      );
+    }
+    
     return (
       <Accordion className={this.props.classes.panel} expanded={this.state.expanded} onChange={this.toggleExpanded}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${this.props.header}-header`}>
-          <IconButton>{this.props.icon}</IconButton>
-          <Typography className={this.props.classes.drawerHeading}>{this.props.header}</Typography>
+          {this.props.icon && <IconButton>{this.props.icon}</IconButton>}
+          {!this.props.isDrawerCollapsed && (
+            <Typography className={this.props.classes.drawerHeading}>{this.props.header}</Typography>
+          )}
         </AccordionSummary>
         <AccordionDetails>
           <List component="nav">
@@ -290,6 +358,7 @@ MainMenuContribution.propTypes = {
   entries: PropTypes.array.isRequired,
   history: PropTypes.object.isRequired,
   menuId: PropTypes.object.isRequired,
+  isDrawerCollapsed: PropTypes.bool,
 };
 
 export default withModulesManager(withTheme(withStyles(styles)(MainMenuContribution)));

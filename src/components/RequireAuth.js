@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import withWidth from "@material-ui/core/withWidth";
 import { Redirect, useHistory } from "../helpers/history";
 import { alpha, useTheme, makeStyles } from "@material-ui/core/styles";
@@ -29,6 +29,8 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import { Switch } from "@material-ui/core";
 import { useTranslations } from "../helpers/i18n";
 import { DEFAULT } from "../constants";
+
+const DRAWER_COLLAPSED_STORAGE_KEY = 'openimis_drawer_collapsed';
 
 
 export const APP_BAR_CONTRIBUTION_KEY = "core.AppBar";
@@ -64,6 +66,11 @@ const useStyles = makeStyles((theme) => ({
     }),
     backgroundColor: theme.palette.secondary.second,
     color: theme.palette.text.primary
+  },
+  toolbarDrawer: {
+    minHeight: 56,
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
   },
   
   toolbarDrawerLogout: {
@@ -131,6 +138,14 @@ const useStyles = makeStyles((theme) => ({
     margin: theme.spacing(0, 1, 0, 1),
     padding: 0,
   },
+  drawerMenuButton: {
+    margin: theme.spacing(0, 1, 0, 0),
+    padding: theme.spacing(0.5),
+    color: 'white',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
   autoHideMenuButton: {
     [theme.breakpoints.up("md")]: {
       display: "none",
@@ -154,7 +169,25 @@ const useStyles = makeStyles((theme) => ({
   },
   drawerPaper: {
     width: theme.menu.drawer.width,
-    backgroundColor: theme.menu.drawer.backgroundColor
+    backgroundColor: theme.menu.drawer.backgroundColor,
+    transition: theme.transitions.create("width", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  },
+  drawerPaperCollapsed: {
+    width: 64,
+    transition: theme.transitions.create("width", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+  },
+  drawerCollapsed: {
+    width: 64,
+    transition: theme.transitions.create("width", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
   },
   content: {
     flexGrow: 1,
@@ -245,6 +278,13 @@ const useStyles = makeStyles((theme) => ({
     marginLeft: theme.menu.drawer.width,
     marginRight: theme.jrnlDrawer.close.width
   },
+  contentShiftCollapsed: {
+    marginLeft: 64,
+    transition: theme.transitions.create("margin", {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+  },
 }));
 
 const RequireAuth = (props) => {
@@ -259,6 +299,24 @@ const RequireAuth = (props) => {
     ...others
   } = props;  const [isOpen, setOpen] = useBoolean();
   const [isDrawerOpen, setDrawerOpen] = useBoolean();
+  
+  // Utiliser localStorage pour persister l'état du drawer
+  const [isDrawerCollapsed, setDrawerCollapsedState] = useState(() => {
+    const saved = localStorage.getItem(DRAWER_COLLAPSED_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Sauvegarder l'état dans localStorage quand il change
+  useEffect(() => {
+    localStorage.setItem(DRAWER_COLLAPSED_STORAGE_KEY, JSON.stringify(isDrawerCollapsed));
+  }, [isDrawerCollapsed]);
+
+  const setDrawerCollapsed = {
+    toggle: () => setDrawerCollapsedState(prev => !prev),
+    on: () => setDrawerCollapsedState(true),
+    off: () => setDrawerCollapsedState(false),
+  };
+
   const theme = useTheme();
   const classes = useStyles();
   const history = useHistory();
@@ -294,36 +352,57 @@ const RequireAuth = (props) => {
           </Toolbar>
         </AppBar>
         <Drawer
-          className={classes.drawer}
+          className={clsx(classes.drawer, {
+            [classes.drawerCollapsed]: isDrawerCollapsed,
+          })}
           variant="permanent"
           classes={{
-            paper: classes.drawerPaper,
+            paper: clsx(classes.drawerPaper, {
+              [classes.drawerPaperCollapsed]: isDrawerCollapsed,
+            }),
           }}
           anchor="left"
         >
           <Button className={classes.appName} onClick={(e) => (window.location.href = "/front")}>
-            {isAppBarMenu && (
-              <Hidden smDown implementation="css">
-                <img className={classes.logo} src={isWorker && !!whiteLogo ? whiteLogo : logo} alt="Logo of openIMIS" />
-              </Hidden>
+            <IconButton
+              color="inherit"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDrawerCollapsed.toggle();
+              }}
+              className={classes.drawerMenuButton}
+              size="small"
+            >
+              <MenuIcon />
+            </IconButton>
+            {!isDrawerCollapsed && (
+              <>
+                {isAppBarMenu && (
+                  <Hidden smDown implementation="css">
+                    <img className={classes.logo} src={isWorker && !!whiteLogo ? whiteLogo : logo} alt="Logo of openIMIS" />
+                  </Hidden>
+                )}
+                <FormattedMessage module="core" id="appName" defaultMessage={<FormattedMessage id="root.appName" />} />
+                <Hidden smDown implementation="css">
+                  <Tooltip title={modulesManager.getModulesVersions().join(", ")}>
+                    <Typography variant="caption" className={classes.appVersions}>
+                      {modulesManager.getOpenIMISVersion()}
+                    </Typography>
+                  </Tooltip>
+                </Hidden>
+              </>
             )}
-            <FormattedMessage module="core" id="appName" defaultMessage={<FormattedMessage id="root.appName" />} />
-            <Hidden smDown implementation="css">
-              <Tooltip title={modulesManager.getModulesVersions().join(", ")}>
-                <Typography variant="caption" className={classes.appVersions}>
-                  {modulesManager.getOpenIMISVersion()}
-                </Typography>
-              </Tooltip>
-            </Hidden>
           </Button>
           <div className={classes.drawerContainer}></div>
-            <MainMenuBar {...others} menuVariant="Drawer" contributionKey={MAIN_MENU_CONTRIBUTION_KEY}>
+            <MainMenuBar {...others} menuVariant="Drawer" contributionKey={MAIN_MENU_CONTRIBUTION_KEY} isDrawerCollapsed={isDrawerCollapsed}>
               <Divider />
             </MainMenuBar>
           <div/>
         </Drawer>  
         <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />
-        <main className={classes.contentShiftLeftSideMenu}>
+        <main className={clsx(classes.contentShiftLeftSideMenu, {
+          [classes.contentShiftCollapsed]: isDrawerCollapsed,
+        })}>
           {children}
         </main>
       </>

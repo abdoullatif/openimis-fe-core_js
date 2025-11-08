@@ -57,7 +57,7 @@ function getUnmatchedMenus(menuConfig, menus, rights, modulesManager, menuVarian
 
       return {
         name: config.id,
-        component: () => (
+        component: (props) => (
           <MainMenuContribution
             menuVariant={menuVariant}
             header={config.name}
@@ -67,6 +67,7 @@ function getUnmatchedMenus(menuConfig, menus, rights, modulesManager, menuVarian
             history={history}
             entries={[]}
             icon={IconComponent ? <IconComponent /> : null}
+            {...props}
           />
         ),
       };
