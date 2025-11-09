@@ -20,6 +20,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Hidden,
 } from "@material-ui/core";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
@@ -378,8 +379,9 @@ class JournalDrawer extends Component {
   render() {
     const { theme, classes, open, handleDrawer } = this.props;
     return (
-      <ClickAwayListener onClickAway={(e) => open && handleDrawer()}>
-        <nav className={classes.drawer}>
+      <Hidden smDown implementation="css">
+        <ClickAwayListener onClickAway={(e) => open && handleDrawer()}>
+          <nav className={classes.drawer}>
           <StyledMessages
             anchorEl={this.state.messagesAnchor}
             messages={this.state.messages}
@@ -482,6 +484,7 @@ class JournalDrawer extends Component {
           </Drawer>
         </nav>
       </ClickAwayListener>
+      </Hidden>
     );
   }
 }

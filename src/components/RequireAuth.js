@@ -18,6 +18,7 @@ import {
   Hidden,
   ClickAwayListener,
 } from "@material-ui/core";
+import useMediaQuery from '@material-ui/core/useMediaQuery';
 import MenuIcon from "@material-ui/icons/Menu";
 import Contributions from "./generics/Contributions";
 import FormattedMessage from "./generics/FormattedMessage";
@@ -330,6 +331,8 @@ const RequireAuth = (props) => {
   );
   const isWorker = modulesManager.getConf("fe-core", "isWorker", DEFAULT.IS_WORKER);
   const showJournalSidebar = modulesManager.getConf("fe-core", "showJournalSidebar", DEFAULT.SHOW_JOURNAL_SIDEBAR);
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const journalDrawerEnabled = showJournalSidebar && !isSmallScreen;
   const isAppBarMenu = useMemo(() => theme.menu.variant.toUpperCase() === "APPBAR", [theme.menu.variant]);
 
   if (!auth.isAuthenticated) {
@@ -399,10 +402,13 @@ const RequireAuth = (props) => {
             </MainMenuBar>
           <div/>
         </Drawer>  
-        <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />
-        <main className={clsx(classes.contentShiftLeftSideMenu, {
+        {journalDrawerEnabled && <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />}
+        <main
+          className={clsx(classes.contentShiftLeftSideMenu, {
           [classes.contentShiftCollapsed]: isDrawerCollapsed,
-        })}>
+        })}
+          style={journalDrawerEnabled ? undefined : { marginRight: 0 }}
+        >
           {children}
         </main>
       </>
@@ -415,7 +421,7 @@ const RequireAuth = (props) => {
         position="fixed"
         className={clsx({
           [classes.appBarShift]: isOpen && theme.breakpoints.up("md"),
-          [classes.appBar]: showJournalSidebar,
+          [classes.appBar]: journalDrawerEnabled,
         })}
       >
         <Toolbar>
@@ -494,13 +500,14 @@ const RequireAuth = (props) => {
           </nav>
         </ClickAwayListener>
       )}
-      {showJournalSidebar && <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />}
+      {journalDrawerEnabled && <JournalDrawer open={isDrawerOpen} handleDrawer={setDrawerOpen.toggle} />}
       <div className={classes.toolbar} />
       <main
         className={clsx({
           [classes.jrnlContentShift]: isDrawerOpen,
-          [classes.content]: showJournalSidebar,
+          [classes.content]: journalDrawerEnabled,
         })}
+        style={journalDrawerEnabled ? undefined : { marginRight: 0 }}
       >
         {children}
       </main>
