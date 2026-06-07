@@ -12,6 +12,8 @@ import {
   useModulesManager,
   useTranslations,
 } from "@openimis/fe-core";
+import CustomFilterValueSuggestionsInput from "../inputs/CustomFilterValueSuggestionsInput";
+import { shouldUseCustomFilterValueSuggestions } from "../../utils/customFilterSuggestions";
 import { Grid } from "@material-ui/core";
 import { withTheme, withStyles } from "@material-ui/core/styles";
 import { connect } from "react-redux";
@@ -47,28 +49,38 @@ const AdvancedFilterRowValue = ({
   index,
   filters,
   setFilters,
+  benefitPlanId = null,
+  customFilterModuleName = "payroll",
+  customFilterObjectTypeName = "BenefitPlan",
 }) => {
-  const onAttributeChange = (attribute) => (value) => {
-    let updatedFilter = { ...currentFilter };
-
-    if (attribute === "field") {
-      updatedFilter = {
-        ...{ filter: "", value: "", type: value.type, referential: value.referential, typeLocation: value.typeLocation },
-      };
-    }
-
-    const attributeValue = attribute === "field" ? value.field : value;
-    updatedFilter = {
-      ...updatedFilter,
-      [attribute]: attributeValue,
-      ...(attribute === "filter" && { value: "" }),
-    };
-
-    setCurrentFilter(updatedFilter);
-
+  const onAttributeChange = (attribute) => (incoming) => {
     setFilters((prevFilters) => {
       const updatedRows = [...prevFilters];
-      updatedRows[index] = { ...updatedFilter };
+      const row = { ...(updatedRows[index] ?? {}) };
+
+      if (attribute === 'field') {
+        updatedRows[index] = {
+          ...row,
+          field: incoming.field,
+          type: incoming.type,
+          referential: incoming.referential,
+          typeLocation: incoming.typeLocation,
+          filter: '',
+          value: '',
+        };
+      } else if (attribute === 'filter') {
+        updatedRows[index] = {
+          ...row,
+          filter: incoming,
+        };
+      } else {
+        updatedRows[index] = {
+          ...row,
+          [attribute]: incoming,
+        };
+      }
+
+      setCurrentFilter(updatedRows[index]);
       return updatedRows;
     });
   };
@@ -112,11 +124,40 @@ const AdvancedFilterRowValue = ({
       case BOOLEAN:
         return <SelectInput options={BOOL_OPTIONS} {...commonProps} />;
       case INTEGER:
+        if (shouldUseCustomFilterValueSuggestions(currentFilter) && benefitPlanId) {
+          return (
+            <CustomFilterValueSuggestionsInput
+              label={commonProps.label}
+              value={currentFilter.value}
+              onChange={onAttributeChange("value")}
+              field={currentFilter.field}
+              moduleName={customFilterModuleName}
+              objectTypeName={customFilterObjectTypeName}
+              uuidOfObject={benefitPlanId}
+              minLength={1}
+            />
+          );
+        }
         return <NumberInput min={0} displayZero {...commonProps} />;
       case STRING:
       default:
         if (currentFilter.field.toLowerCase().includes(DATE)) {
           return <PublishedComponent pubRef="core.DatePicker" {...commonProps} />;
+        }
+        if (shouldUseCustomFilterValueSuggestions(currentFilter) && benefitPlanId) {
+          return (
+            <CustomFilterValueSuggestionsInput
+              label={commonProps.label}
+              value={currentFilter.value}
+              onChange={onAttributeChange("value")}
+              readOnly={commonProps.readOnly}
+              field={currentFilter.field}
+              moduleName={customFilterModuleName}
+              objectTypeName={customFilterObjectTypeName}
+              uuidOfObject={benefitPlanId}
+              minLength={1}
+            />
+          );
         }
         return <TextInput {...commonProps} />;
     }

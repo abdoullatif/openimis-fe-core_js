@@ -5,6 +5,8 @@ import messages_fr from "./translations/fr.json";
 import KeepLegacyAlive from "./components/KeepLegacyAlive";
 import AutoSuggestion from "./components/inputs/AutoSuggestion";
 import Autocomplete from "./components/inputs/Autocomplete";
+import FilterSuggestionsAutocomplete from "./components/inputs/FilterSuggestionsAutocomplete";
+import CustomFilterValueSuggestionsInput from "./components/inputs/CustomFilterValueSuggestionsInput";
 import Contributions from "./components/generics/Contributions";
 import Block from "./components/generics/Block";
 import ControlledField from "./components/generics/ControlledField";
@@ -67,6 +69,7 @@ import {
   prepareMutation,
   clearCurrentPaginationPage,
   fetchCustomFilter,
+  fetchCustomFilterValueSuggestions,
   fetchPasswordPolicy
 } from "./actions";
 import {
@@ -100,6 +103,15 @@ import {
   formatGQLString,
   formatNodeQuery
 } from "./helpers/api";
+import {
+  shouldStopMutationPolling,
+  isMutationActive,
+  getEffectiveTaskBarStatus,
+  mergeMutationLogNode,
+  TASK_BAR_STATUS,
+  TASK_BAR_POLL_INTERVAL_MS,
+  MUTATION_LOG_TASKBAR_PROJECTION,
+} from "./helpers/mutationTaskBar";
 import {
   downloadExport
 } from "./helpers/downloadExport"
@@ -187,7 +199,7 @@ const DEFAULT_CONFIG = {
   ],
   "middlewares": [authMiddleware],
   "refs": [
-    { key: "core.JournalDrawer.pollInterval", ref: 2000 },
+    { key: "core.JournalDrawer.pollInterval", ref: 2500 },
     { key: "core.KeepLegacyAlive.pollInterval", ref: 300000 },
     { key: "core.YearPicker", ref: YearPicker },
     { key: "core.MonthPicker", ref: MonthPicker },
@@ -231,6 +243,7 @@ export {
   baseApiUrl,
   AdvancedFiltersDialog,
   fetchCustomFilter,
+  fetchCustomFilterValueSuggestions,
   apiHeaders,
   graphql,
   graphqlWithVariables,
@@ -269,6 +282,13 @@ export {
   dispatchMutationReq,
   dispatchMutationResp,
   dispatchMutationErr,
+  shouldStopMutationPolling,
+  isMutationActive,
+  getEffectiveTaskBarStatus,
+  mergeMutationLogNode,
+  TASK_BAR_STATUS,
+  TASK_BAR_POLL_INTERVAL_MS,
+  MUTATION_LOG_TASKBAR_PROJECTION,
   parseData,
   pageInfo,
   formatServerError,
@@ -285,6 +305,8 @@ export {
   withTooltip,
   App,
   Autocomplete,
+  FilterSuggestionsAutocomplete,
+  CustomFilterValueSuggestionsInput,
   AutoSuggestion,
   Block,
   Contributions,

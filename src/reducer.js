@@ -9,6 +9,7 @@ import {
   dispatchMutationErr,
 } from "./helpers/api";
 import _ from "lodash";
+import { mergeMutationLogNode } from "./helpers/mutationTaskBar";
 
 function reducer(
   state = {
@@ -150,11 +151,18 @@ function reducer(
         fetchingMutations: true,
       };
     case "CORE_MUTATION_RESP": {
-      const mutations = parseData(action.payload.data.mutationLogs);
+      const incoming = parseData(action.payload.data.mutationLogs);
+      const byId = _.keyBy(state.mutations, "clientMutationId");
+      incoming.forEach((node) => {
+        const id = node.clientMutationId;
+        if (id) {
+          byId[id] = mergeMutationLogNode(byId[id], node);
+        }
+      });
       return {
         ...state,
         fetchingMutations: false,
-        mutations: _.unionBy(mutations, state.mutations, "clientMutationId"),
+        mutations: _.values(byId),
       };
     }
     case "CORE_MUTATION_ERR":

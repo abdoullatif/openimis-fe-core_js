@@ -27,6 +27,7 @@ import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import MoreIcon from "@material-ui/icons/KeyboardArrowDown";
 import CheckIcon from "@material-ui/icons/CheckCircleOutline";
 import ErrorIcon from "@material-ui/icons/ErrorOutline";
+import CancelIcon from "@material-ui/icons/CancelOutlined";
 import ExpandLessIcon from "@material-ui/icons/ExpandLess";
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import { fetchMutation, fetchHistoricalMutations } from "../actions";
@@ -34,6 +35,13 @@ import withModulesManager from "../helpers/modules";
 import moment from "moment";
 import _ from "lodash";
 import { CLAIM_STATS_ORDER, GLOBAL_UNDERSCORE, REQUEST_LIMIT, WHITE_SPACE } from "../constants";
+import {
+  getEffectiveTaskBarStatus,
+  isMutationActive,
+  isMutationStaleWithoutStop,
+  isTaskBarSpinnerVisible,
+  TASK_BAR_STATUS,
+} from "../helpers/mutationTaskBar";
 
 const styles = (theme) => ({
   toolbar: {
@@ -83,6 +91,14 @@ const styles = (theme) => ({
   jrnlErrorIcon: {
     paddingLeft: theme.spacing(1),
     color: theme.palette.error.main,
+  },
+  jrnlCancelledIcon: {
+    paddingLeft: theme.spacing(1),
+    color: theme.palette.warning.main,
+  },
+  jrnlStaleIcon: {
+    paddingLeft: theme.spacing(1),
+    color: theme.palette.text.secondary,
   },
   messagePopover: {
     width: 350,
@@ -259,7 +275,8 @@ class JournalDrawer extends Component {
       displayedMutations: [],
       messagesAnchor: null,
       expanded: false,
-      limitMutationLogsQuery: props.modulesManager.getConf("fe-core", "journalDrawer.limitMutationLogsQuery", false)
+      limitMutationLogsQuery: props.modulesManager.getConf("fe-core", "journalDrawer.limitMutationLogsQuery", false),
+      forcedStaleIds: {},
     };
   }
 
@@ -267,8 +284,9 @@ class JournalDrawer extends Component {
     if (!this.props.fetchedHistoricalMutations) {
       this.props.fetchHistoricalMutations(this.state.pageSize, this.state.afterCursor);
     }
+    const pollMs = this.props.modulesManager.getRef("core.JournalDrawer.pollInterval") || 2500;
     this.setState((state, props) => ({
-      timeoutId: setInterval(this.checkProcessing, props.modulesManager.getRef("core.JournalDrawer.pollInterval")),
+      pollIntervalId: setInterval(this.checkProcessing, pollMs),
       displayedMutations: [...props.mutations],
     }));
   }
@@ -288,10 +306,71 @@ class JournalDrawer extends Component {
   }
 
   componentWillUnmount() {
-    clearTimeout(this.state.timeoutId);
+    if (this.state.pollIntervalId) {
+      clearInterval(this.state.pollIntervalId);
+    }
   }
+
+  getActiveMutations = () => {
+    const { displayedMutations, forcedStaleIds } = this.state;
+    return displayedMutations.filter((m) => {
+      if (forcedStaleIds[m.clientMutationId]) return false;
+      return isMutationActive(m) || isMutationStaleWithoutStop(m);
+    });
+  };
+
+  markForcedStale = (clientMutationId) => {
+    this.setState((prev) => ({
+      forcedStaleIds: { ...prev.forcedStaleIds, [clientMutationId]: true },
+    }));
+  };
+
+  renderMutationIcons = (m, theme, classes, open) => {
+    const taskStatus = getEffectiveTaskBarStatus(m);
+    const inProgress = isTaskBarSpinnerVisible(m);
+    const isError = taskStatus === TASK_BAR_STATUS.ERROR || m.status === 1;
+    const isCancelled = taskStatus === TASK_BAR_STATUS.CANCELLED;
+    const isStale = taskStatus === TASK_BAR_STATUS.STALE;
+
+    let statusIcon = <CheckIcon />;
+    let statusIconClass = classes.jrnlIcon;
+    if (isError) {
+      statusIcon = <ErrorIcon />;
+      statusIconClass = classes.jrnlErrorIcon;
+    } else if (isCancelled) {
+      statusIcon = <CancelIcon />;
+      statusIconClass = classes.jrnlCancelledIcon;
+    } else if (isStale) {
+      statusIcon = <ErrorIcon />;
+      statusIconClass = classes.jrnlStaleIcon;
+    }
+
+    return (
+      <>
+        {inProgress && (
+          <ListItemIcon className={classes.jrnlIcon}>
+            <CircularProgress size={theme.jrnlDrawer.iconSize} />
+          </ListItemIcon>
+        )}
+        <ListItemIcon
+          className={clsx(statusIconClass, { [classes.jrnlIconClickable]: !open })}
+          onClick={(e) => this.showMessages(e, m)}
+        >
+          {statusIcon}
+        </ListItemIcon>
+      </>
+    );
+  };
+
   checkProcessing = () => {
-    var clientMutationIds = this.state.displayedMutations.filter((m) => m.status === 0).map((m) => m.clientMutationId);
+    const activeMutations = this.getActiveMutations();
+    const clientMutationIds = activeMutations.map((m) => m.clientMutationId).filter(Boolean);
+    activeMutations.forEach((m) => {
+      if (isMutationStaleWithoutStop(m) && !this.state.forcedStaleIds[m.clientMutationId]) {
+        this.props.fetchMutation(m.clientMutationId);
+        this.markForcedStale(m.clientMutationId);
+      }
+    });
     //TODO: change for a "fetchMutationS(ids)"  > requires id_In backend implementation
     if(this.state.limitMutationLogsQuery){
       var mutationLogs = localStorage.getItem('arrayMutations');
@@ -409,24 +488,20 @@ class JournalDrawer extends Component {
             </Grid>
             <Divider />
             <List>
-              {this.state.displayedMutations.map((m, idx) => (
+              {this.state.displayedMutations.map((m, idx) => {
+                const taskStatus = getEffectiveTaskBarStatus(m);
+                const isError = taskStatus === TASK_BAR_STATUS.ERROR || m.status === 1;
+                const secondary = m.taskBarMessage
+                  ? m.taskBarMessage
+                  : moment(m.requestDateTime).format("YYYY-MM-DD HH:mm");
+                return (
                 <Fragment key={`mutation${idx}`}>
                   <ListItem key={`mutation-label${idx}`} className={classes.jrnlItem}>
-                    {m.status == 0 && (
-                      <ListItemIcon className={classes.jrnlIcon}>
-                        <CircularProgress size={theme.jrnlDrawer.iconSize} />
-                      </ListItemIcon>
-                    )}
-                    <ListItemIcon
-                      className={clsx(m.status === 1 ? classes.jrnlErrorIcon : classes.jrnlIcon, { [classes.jrnlIconClickable]: !open })}
-                      onClick={(e) => this.showMessages(e, m)}
-                    >
-                      {m.status === 1 ? <ErrorIcon /> : <CheckIcon/>}
-                    </ListItemIcon>
+                    {this.renderMutationIcons(m, theme, classes, open)}
                     <ListItemText
-                      className={m.status === 1 ? classes.jrnlErrorItem : classes.jrnlItem}
+                      className={isError ? classes.jrnlErrorItem : classes.jrnlItem}
                       primary={m.clientMutationLabel}
-                      secondary={moment(m.requestDateTime).format("YYYY-MM-DD HH:mm")}
+                      secondary={secondary}
                     />
                     {!!m.clientMutationDetails && this.state.expanded === `detail-${idx}` && (
                       <IconButton onClick={(e) => this.handleChange(e, false)}>
@@ -472,7 +547,8 @@ class JournalDrawer extends Component {
                     </Collapse>
                   )}
                 </Fragment>
-              ))}
+              );
+              })}
               {!!this.state.hasNextPage && (
                 <ListItem key={`more`} className={classes.jrnlItem}>
                   <IconButton onClick={this.more} className={classes.jrnlIcon}>

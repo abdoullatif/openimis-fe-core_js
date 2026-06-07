@@ -6,7 +6,7 @@ import DialogActions from "@material-ui/core/DialogActions";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import Grid from "@material-ui/core/Grid";
-import { formatMessage, SearcherActionButton } from "@openimis/fe-core";
+import { formatMessage, SearcherActionButton, decodeId } from "@openimis/fe-core";
 import { withStyles, withTheme } from "@material-ui/core/styles";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
@@ -26,6 +26,17 @@ const styles = (theme) => ({
   item: theme.paper.item,
   paperHeaderAction: { ...theme.paper.action, display: "flex", justifyContent: "center", itemAlign: "center" },
 });
+
+function resolveBenefitPlanUuid(benefitPlanObject) {
+  if (!benefitPlanObject?.id) return null;
+  const { id } = benefitPlanObject;
+  if (/^\d+$/.test(id)) return id;
+  try {
+    return decodeId(id);
+  } catch {
+    return id;
+  }
+}
 
 const AdvancedFiltersDialog = ({
   intl,
@@ -216,12 +227,14 @@ const AdvancedFiltersDialog = ({
         <DialogContent>
           {filters.map((filter, index) => {
             return (<AdvancedFilterRowValue
+              key={`advanced-filter-${index}`}
               customFilters={customFilters}
               currentFilter={filter}
               setCurrentFilter={setCurrentFilter}
               index={index}
               filters={filters}
               setFilters={setFilters}
+              benefitPlanId={resolveBenefitPlanUuid(object)}
             />)
           })}
           <div

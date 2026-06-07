@@ -1,4 +1,5 @@
 import React, { Component, Fragment } from "react";
+import { injectIntl } from "react-intl";
 import * as Icons from "@material-ui/icons";
 import PropTypes from "prop-types";
 import clsx from "clsx";
@@ -26,6 +27,7 @@ import {
 } from "@material-ui/core";
 import withModulesManager from "../../helpers/modules";
 import { _historyPush } from "../../helpers/history";
+import { formatMessage, formatMessageWithValues } from "../../helpers/i18n";
 
 
 const styles = (theme) => ({
@@ -120,12 +122,74 @@ const getIconComponent = (iconName) => {
   return null;
 };
 
+const mergeMenuEntries = (allEntries, entries) => {
+  const mergedEntries = new Map();
+
+  [...allEntries, ...entries].forEach((entry) => {
+    if (entry?.id) {
+      mergedEntries.set(entry.id, entry);
+    }
+  });
+
+  return Array.from(mergedEntries.values());
+};
+
+const wrapMenuIcon = (icon) => {
+  if (!React.isValidElement(icon)) {
+    return null;
+  }
+
+  return <span className="menu-item-icon">{icon}</span>;
+};
+
+const renderMenuEntryLabel = (intl, label) => {
+  if (label === null || label === undefined || label === false) {
+    return null;
+  }
+
+  if (typeof label === "string" || typeof label === "number") {
+    return label;
+  }
+
+  if (typeof label === "object" && label !== null && !React.isValidElement(label)) {
+    const { module, id, values } = label;
+    if (intl && module && id) {
+      return values
+        ? formatMessageWithValues(intl, module, id, values)
+        : formatMessage(intl, module, id);
+    }
+    return null;
+  }
+
+  if (React.isValidElement(label)) {
+    const { module, id, values } = label.props || {};
+    if (intl && module && id) {
+      return values
+        ? formatMessageWithValues(intl, module, id, values)
+        : formatMessage(intl, module, id);
+    }
+    return label;
+  }
+
+  return null;
+};
+
+const getTooltipTitle = (intl, label) => {
+  const resolvedLabel = renderMenuEntryLabel(intl, label);
+  if (typeof resolvedLabel === "string" || typeof resolvedLabel === "number") {
+    return String(resolvedLabel);
+  }
+
+  return "";
+};
+
 function fetchSubmenuConfig(modulesManager, allEntries, entries, menuId, rights) {
   const menuConfig = modulesManager.getConf("fe-core", "menus", []);
   const isMenuConfigEmpty = !(menuConfig?.length);
   const submenuMapping = {};
   const menuIcons = {}; 
   const copyOfEntries = entries;
+  const sourceEntries = mergeMenuEntries(allEntries, copyOfEntries);
 
   if (!isMenuConfigEmpty) {
     menuConfig
@@ -139,7 +203,7 @@ function fetchSubmenuConfig(modulesManager, allEntries, entries, menuId, rights)
         });
       });
 
-    const updatedEntries = allEntries
+    const updatedEntries = sourceEntries
       .map(entry => {
         const customIcon = menuIcons[entry.id];
         return {
@@ -205,6 +269,11 @@ class MainMenuContribution extends Component {
     _historyPush(modulesManager, history, route);
   }
 
+  normalizeMenuEntries = (entries) => entries.map((entry) => ({
+    ...entry,
+    text: renderMenuEntryLabel(this.props.intl, entry.text),
+  }));
+
   appBarMenu = (entries) => {
     return (
       <Fragment>
@@ -231,8 +300,10 @@ class MainMenuContribution extends Component {
                     {entries.map((entry, idx) => (
                       <div key={`${this.props.header}_${idx}_menuItem`}>
                         <MenuItem onClick={(e) => this.handleMenuSelect(e, entry.route)}  component="a"  href={`${process.env.PUBLIC_URL || ""}${entry.route}`} passHref>
-                          <ListItemIcon>{entry.icon}</ListItemIcon>
-                          <ListItemText primary={entry.text}/>
+                          {entry.icon && <ListItemIcon>{wrapMenuIcon(entry.icon)}</ListItemIcon>}
+                          <ListItemText disableTypography>
+                            {entry.text}
+                          </ListItemText>
                           
                         </MenuItem>
                         {entry.withDivider && (
@@ -269,9 +340,9 @@ class MainMenuContribution extends Component {
             id={`${this.props.header}-header`}
             style={{ minHeight: 48, padding: '0 8px', justifyContent: 'center' }}
           >
-            <Tooltip title={this.props.header} placement="right">
+            <Tooltip title={getTooltipTitle(this.props.intl, this.props.header)} placement="right">
               <IconButton style={{ padding: 8, color: 'inherit' }}>
-                {this.props.icon}
+                {wrapMenuIcon(this.props.icon)}
               </IconButton>
             </Tooltip>
           </AccordionSummary>
@@ -289,11 +360,14 @@ class MainMenuContribution extends Component {
                   >
                     {entry.icon && (
                       <ListItemIcon style={{ minWidth: 'auto' }}>
-                        <Tooltip title={entry.text} placement="right">
-                          {entry.icon}
+                        <Tooltip title={getTooltipTitle(this.props.intl, entry.text)} placement="right">
+                          {wrapMenuIcon(entry.icon)}
                         </Tooltip>
                       </ListItemIcon>
                     )}
+                    <ListItemText disableTypography>
+                      {entry.text}
+                    </ListItemText>
                   </ListItem>
                   {entry.withDivider && (
                     <Divider key={`${this.props.header}_${idx}_divider`} className={this.props.classes.drawerDivider} />
@@ -309,9 +383,11 @@ class MainMenuContribution extends Component {
     return (
       <Accordion className={this.props.classes.panel} expanded={this.state.expanded} onChange={this.toggleExpanded}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${this.props.header}-header`}>
-          {this.props.icon && <IconButton>{this.props.icon}</IconButton>}
+          {this.props.icon && <IconButton>{wrapMenuIcon(this.props.icon)}</IconButton>}
           {!this.props.isDrawerCollapsed && (
-            <Typography className={this.props.classes.drawerHeading}>{this.props.header}</Typography>
+            <Typography className={this.props.classes.drawerHeading}>
+              {renderMenuEntryLabel(this.props.intl, this.props.header)}
+            </Typography>
           )}
         </AccordionSummary>
         <AccordionDetails>
@@ -325,8 +401,10 @@ class MainMenuContribution extends Component {
                     this.redirect(entry.route);
                   }}
                 >
-                  {entry.icon && <ListItemIcon>{entry.icon}</ListItemIcon>}
-                  <ListItemText primary={entry.text}/>
+                  {entry.icon && <ListItemIcon>{wrapMenuIcon(entry.icon)}</ListItemIcon>}
+                  <ListItemText disableTypography>
+                    {entry.text}
+                  </ListItemText>
                 </ListItem>
                 {entry.withDivider && (
                   <Divider key={`${this.props.header}_${idx}_divider`} className={this.props.classes.drawerDivider} />
@@ -342,8 +420,10 @@ class MainMenuContribution extends Component {
   render() {
     const { menuVariant, modulesManager } = this.props;
     const allEntries = modulesManager.getMenuEntries();
-    const updatedEntries = fetchSubmenuConfig(
-      modulesManager, allEntries, this.props.entries, this.props.menuId, this.props.rights
+    const updatedEntries = this.normalizeMenuEntries(
+      fetchSubmenuConfig(
+        modulesManager, allEntries, this.props.entries, this.props.menuId, this.props.rights
+      )
     );
     if (menuVariant === "AppBar") {
       return this.appBarMenu(updatedEntries);
@@ -357,8 +437,8 @@ MainMenuContribution.propTypes = {
   header: PropTypes.string.isRequired,
   entries: PropTypes.array.isRequired,
   history: PropTypes.object.isRequired,
-  menuId: PropTypes.object.isRequired,
+  menuId: PropTypes.string,
   isDrawerCollapsed: PropTypes.bool,
 };
 
-export default withModulesManager(withTheme(withStyles(styles)(MainMenuContribution)));
+export default withModulesManager(withTheme(withStyles(styles)(injectIntl(MainMenuContribution))));

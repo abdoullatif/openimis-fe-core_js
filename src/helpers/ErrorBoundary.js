@@ -4,12 +4,11 @@ import InternalServerErrorPage from "../components/InternalServerErrorPage";
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
-    // update the state to show the failover UI at next render
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
@@ -19,7 +18,12 @@ class ErrorBoundary extends React.Component {
   
   render() {
     if (this.state.hasError) {
-      return <InternalServerErrorPage logo={this.props.children.props.logo} />;
+      return (
+        <InternalServerErrorPage
+          logo={this.props.children?.props?.logo}
+          description={this.state.error?.message}
+        />
+      );
     }
 
     return this.props.children;
