@@ -7,6 +7,8 @@ import AutoSuggestion from "./components/inputs/AutoSuggestion";
 import Autocomplete from "./components/inputs/Autocomplete";
 import FilterSuggestionsAutocomplete from "./components/inputs/FilterSuggestionsAutocomplete";
 import CustomFilterValueSuggestionsInput from "./components/inputs/CustomFilterValueSuggestionsInput";
+import CustomFilterFieldValueInput from "./components/inputs/CustomFilterFieldValueInput";
+import { shouldUseCustomFilterValueSuggestions } from "./utils/customFilterSuggestions";
 import Contributions from "./components/generics/Contributions";
 import Block from "./components/generics/Block";
 import ControlledField from "./components/generics/ControlledField";
@@ -307,6 +309,7 @@ export {
   Autocomplete,
   FilterSuggestionsAutocomplete,
   CustomFilterValueSuggestionsInput,
+  CustomFilterFieldValueInput,
   AutoSuggestion,
   Block,
   Contributions,
@@ -365,4 +368,5 @@ export {
   useToast,
   InfoButton,
   usePublicPageLanguage,
+  shouldUseCustomFilterValueSuggestions,
 };

@@ -11,11 +11,13 @@ function CustomFilterValueSuggestionsInput({
   onChange,
   readOnly,
   field,
-  moduleName,
-  objectTypeName,
+  moduleName = 'social_protection',
+  objectTypeName = 'BenefitPlan',
   uuidOfObject,
   fetchCustomFilterValueSuggestions: fetchSuggestionsAction,
   minLength = 1,
+  onSuggestionsLoaded,
+  getOptionLabel,
 }) {
   const fetchSuggestions = useCallback(async (search) => {
     if (!field || !moduleName || !objectTypeName || !uuidOfObject) {
@@ -33,13 +35,16 @@ function CustomFilterValueSuggestionsInput({
       return [];
     }
     const raw = action?.payload?.data?.customFilterValueSuggestions;
-    return normalizeFilterSuggestions(raw);
+    const normalized = normalizeFilterSuggestions(raw);
+    onSuggestionsLoaded?.(normalized);
+    return normalized;
   }, [
     field,
     moduleName,
     objectTypeName,
     uuidOfObject,
     fetchSuggestionsAction,
+    onSuggestionsLoaded,
   ]);
 
   return (
@@ -52,6 +57,7 @@ function CustomFilterValueSuggestionsInput({
       debounceMs={300}
       readOnly={readOnly}
       freeSolo
+      getOptionLabel={getOptionLabel}
     />
   );
 }

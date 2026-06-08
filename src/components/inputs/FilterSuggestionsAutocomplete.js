@@ -5,6 +5,7 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { useDebounceCb } from '../../helpers/hooks';
 import { useModulesManager } from '../../helpers/modules';
 import { useTranslations } from '../../helpers/i18n';
+import { formatAdvancedFilterDisplayValue } from '../../utils/advancedFilterLocationUtils';
 
 const DEFAULT_DEBOUNCE_MS = 300;
 const DEFAULT_MIN_LENGTH = 2;
@@ -23,12 +24,12 @@ function FilterSuggestionsAutocomplete({
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations('core.FilterSuggestionsAutocomplete', modulesManager);
   const [options, setOptions] = useState([]);
-  const [inputValue, setInputValue] = useState(value ?? '');
+  const [inputValue, setInputValue] = useState(() => formatAdvancedFilterDisplayValue(value));
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    setInputValue(value ?? '');
+    setInputValue(formatAdvancedFilterDisplayValue(value));
   }, [value]);
 
   const loadSuggestions = useCallback(async (search) => {
@@ -79,7 +80,7 @@ function FilterSuggestionsAutocomplete({
   const handleChange = (_, option) => {
     const next = typeof option === 'string'
       ? option
-      : (option?.value ?? option?.label ?? '');
+      : (option?.label ?? option?.value ?? '');
     setInputValue(next);
     onChange(next);
   };

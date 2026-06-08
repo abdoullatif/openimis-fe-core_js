@@ -12,7 +12,7 @@ import {
   useModulesManager,
   useTranslations,
 } from "@openimis/fe-core";
-import CustomFilterValueSuggestionsInput from "../inputs/CustomFilterValueSuggestionsInput";
+import CustomFilterFieldValueInput from "../inputs/CustomFilterFieldValueInput";
 import { shouldUseCustomFilterValueSuggestions } from "../../utils/customFilterSuggestions";
 import { Grid } from "@material-ui/core";
 import { withTheme, withStyles } from "@material-ui/core/styles";
@@ -32,14 +32,6 @@ const styles = (theme) => ({
   item: theme.paper.item,
 });
 
-// Mapping automatique entre typeLocation et niveau LocationPicker
-const LOCATION_LEVELS = {
-  Region: 0,
-  District: 1,
-  Municipality: 2,
-  Village: 3,
-};
-
 const AdvancedFilterRowValue = ({
   intl,
   classes,
@@ -50,7 +42,7 @@ const AdvancedFilterRowValue = ({
   filters,
   setFilters,
   benefitPlanId = null,
-  customFilterModuleName = "payroll",
+  customFilterModuleName = "social_protection",
   customFilterObjectTypeName = "BenefitPlan",
 }) => {
   const onAttributeChange = (attribute) => (incoming) => {
@@ -101,36 +93,18 @@ const AdvancedFilterRowValue = ({
       onChange: onAttributeChange("value"),
     };
 
-    // Cas spécial : Localités (Region, District, Municipality, Village)
-    if (currentFilter.referential === "Location" && currentFilter.typeLocation) {
-      const level = LOCATION_LEVELS[currentFilter.typeLocation];
-      return (
-        <PublishedComponent
-          pubRef="location.LocationPicker"
-          {...commonProps}
-          locationLevel={level}
-          parentLocation={
-            level === 1 ? currentFilter.region :
-            level === 2 ? currentFilter.district :
-            level === 3 ? currentFilter.municipality :
-            null
-          }
-        />
-      );
-    }
-
-    // Cas standard
     switch (type) {
       case BOOLEAN:
         return <SelectInput options={BOOL_OPTIONS} {...commonProps} />;
       case INTEGER:
         if (shouldUseCustomFilterValueSuggestions(currentFilter) && benefitPlanId) {
           return (
-            <CustomFilterValueSuggestionsInput
+            <CustomFilterFieldValueInput
               label={commonProps.label}
               value={currentFilter.value}
               onChange={onAttributeChange("value")}
               field={currentFilter.field}
+              filterMeta={currentFilter}
               moduleName={customFilterModuleName}
               objectTypeName={customFilterObjectTypeName}
               uuidOfObject={benefitPlanId}
@@ -146,12 +120,13 @@ const AdvancedFilterRowValue = ({
         }
         if (shouldUseCustomFilterValueSuggestions(currentFilter) && benefitPlanId) {
           return (
-            <CustomFilterValueSuggestionsInput
+            <CustomFilterFieldValueInput
               label={commonProps.label}
               value={currentFilter.value}
               onChange={onAttributeChange("value")}
               readOnly={commonProps.readOnly}
               field={currentFilter.field}
+              filterMeta={currentFilter}
               moduleName={customFilterModuleName}
               objectTypeName={customFilterObjectTypeName}
               uuidOfObject={benefitPlanId}
