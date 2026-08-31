@@ -29,7 +29,8 @@ function FilterSuggestionsAutocomplete({
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    setInputValue(formatAdvancedFilterDisplayValue(value));
+    const nextValue = formatAdvancedFilterDisplayValue(value);
+    setInputValue((prev) => (prev === nextValue ? prev : nextValue));
   }, [value]);
 
   const loadSuggestions = useCallback(async (search) => {
@@ -61,6 +62,10 @@ function FilterSuggestionsAutocomplete({
 
   const handleInputChange = (_, newInput, reason) => {
     if (reason === 'reset') {
+      // MUI Autocomplete emits "reset" when options refresh — do not wipe in-progress typing
+      if ((newInput ?? '') === '' && inputValue) {
+        return;
+      }
       setInputValue(newInput ?? '');
       return;
     }
